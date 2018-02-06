@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load df_nursery_template_tags %}
+{% load i18n %}
+
+{% block meta_title %}{% trans "Nursery Label Creator" %}{% endblock %}
+{% block title %}{% endblock %}
+
+{% block breadcrumb_menu %}
+{% endblock %}
+{% block main %}
+    {% if user.is_authenticated %}
+        <div>
+            <h2>Label Lists</h2>
+            <ul id="order-list">
+                <li>2017/02/04 Printed: False</li>
+            </ul>
+        </div>
+        <hr>
+        <div>
+            <h2>Add Labels to Order</h2>
+            <div>
+                <form>
+                    <div class="form-group">
+                        <label>Cultivar Name</label>
+                        <input class="form-control" type="text" placeholder="Red Delicious">
+                    </div>
+                    <div class="form-group">
+                        <label>Qty</label>
+                        <input class="form-control" type="number" placeholder="1">
+                    </div>
+                </form>
+            </div>
+            <h2>Current Label List</h2>
+            <ul id="current-order-list">
+                <li>Red Delicious x 5 (X)</li>
+                <li>Blacktwig x 3 (X)</li>
+                <li>Yarrington Mills x 1 <span class="alert-danger">(X)</span></li>
+            </ul>
+        </div>
+        <div>
+        {% if not printed %}
+            <a class="btn btn-lg btn-primary" href="/nursery/labels/print">Print List</a>
+        {% else %}
+            <a class="btn btn-lg btn-danger" href="/nursery/labels/print">Print List Again</a>
+        {% endif %}
+        </div>
+    {% endif %}
+{% endblock %}
