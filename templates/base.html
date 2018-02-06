@@ -35,10 +35,14 @@
 {% compress js %}
 <script src="{% static "mezzanine/js/"|add:settings.JQUERY_FILENAME %}"></script>
 <script src="{% static "js/bootstrap.js" %}"></script>
-<script src="{% static "js/bootstrap-extras.js" %}"></script>
+<script src="{% static "js/bootstrap-exjtras.js" %}"></script>
 {% block extra_js %}{% endblock %}
 {% endcompress %}
 
+<script src="http://code.jquery.com/jquery-2.2.4.min.js"
+			  integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44="
+			  crossorigin="anonymous"></script>
+<script src="{% static 'js/typeahead.bundle.js' %}"></script>
 <!--[if lt IE 9]>
 <script src="{% static "js/html5shiv.js" %}"></script>
 <script src="{% static "js/respond.min.js" %}"></script>
@@ -97,23 +101,29 @@
 <div class="container">
 <div class="row">
 
+<!--
 <div class="col-md-2 left">
     {% block left_panel %}
     <div class="panel panel-default tree">{% page_menu "pages/menus/tree.html" %}</div>
     {% endblock %}
 </div>
+-->
 
 <div class="col-md-7 middle">
     {% block main %}{% endblock %}
 </div>
 
+<!--
 <div class="col-md-3 right">
     {% nevercache %}
     {% include "includes/language_selector.html" %}
     {% include "includes/user_panel.html" %}
     {% endnevercache %}
 </div>
+-->
 
+{% block body_scripts %}
+{% endblock %}
 </div>
 </div>
 

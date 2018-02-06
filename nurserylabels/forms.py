@@ -10,7 +10,7 @@ from openfruit.common.widgets import CustomRelatedFieldWidgetWrapper
 from django_geo_db.models import Location
 
 
-
+"""
 class NurseryLabelForm(ModelForm):
 
     def __init__(self, *args, **kwargs):
@@ -46,3 +46,4 @@ class NurseryLabelForm(ModelForm):
             'date_planted': DateWidget(usel10n=True, bootstrap_version=3),
         }
 
+"""
