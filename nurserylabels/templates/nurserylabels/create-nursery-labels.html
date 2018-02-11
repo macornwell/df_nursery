@@ -1,6 +1,5 @@
 {% extends "base.html" %}
-{% load df_nursery_template_tags %}
-{% load i18n %}
+{% load df_nursery_template_tags i18n staticfiles %}
 
 {% block meta_title %}{% trans "Nursery Label Creator" %}{% endblock %}
 {% block title %}{% endblock %}
@@ -8,88 +7,192 @@
 {% block breadcrumb_menu %}
 {% endblock %}
 {% block main %}
+    <div class="modal fade modal-confirm" id="confirm-delete" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                    <h4 class="modal-title" id="myModalLabel">Confirm Delete</h4>
+                </div>
+
+                <div class="modal-body">
+                    <p>You are about to delete a previous print order, this procedure is irreversible.</p>
+                    <p>Do you want to proceed?</p>
+                    <p class="debug-url"></p>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    <a class="btn btn-danger btn-ok">Delete</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     {% if user.is_authenticated %}
         <div>
-            <h2>Label Lists</h2>
-            <ul id="order-list">
-                <li>2017/02/04 Printed: False</li>
+            <h2>Previous Orders</h2>
+            <ul>
+                {% for obj in previous_orders %}
+                    <li>{{ obj.datetime }}<a id="{{ obj.datetime|date:"YMdhGi" }}" class="btn btn-xs btn-primary add-previous-order">Add</a>
+                        <!--<a class="btn btn-xs btn-danger" href="{% url 'delete-previous-order' obj.previous_label_order_id %}">Delete</a></li>_-->
+                    <button class="btn btn-danger btn-xs" data-href="{% url 'delete-previous-order' obj.previous_label_order_id %}" data-toggle="modal" data-target="#confirm-delete">
+                    Delete
+                    </button>
+                {% endfor %}
             </ul>
         </div>
-        <hr>
         <div>
-            <h2>Add Labels to Order</h2>
+            <h2>Selected Order</h2>
+            <h3>Add Labels to Order</h3>
             <div>
                 <form>
                     <div class="form-group">
                         <label>Cultivar Name</label>
-                        <input id="cultivar-search" class="form-control" type="text" placeholder="Red Delicious">
+                        <input id="cultivar-search" class="form-control typeahead" type="text" placeholder="Type Cultivar Here">
                     </div>
                     <div class="form-group">
                         <label>Qty</label>
-                        <input class="form-control" type="number" placeholder="1">
+                        <input id="cultivar-search-qty" class="form-control" type="number" placeholder="1" value="1">
                     </div>
+                    <input id="search-add-button" type="button" value="Add">
                 </form>
             </div>
-            <h2>Current Label List</h2>
-            <ul id="current-order-list">
-                <li>Red Delicious x 5 (X)</li>
-                <li>Blacktwig x 3 (X)</li>
-                <li>Yarrington Mills x 1 <span class="alert-danger">(X)</span></li>
-            </ul>
+            <h3>Current Label List</h3>
         </div>
         <div>
-        {% if not printed %}
-            <a class="btn btn-lg btn-primary" href="/nursery/labels/print">Print List</a>
-        {% else %}
-            <a class="btn btn-lg btn-danger" href="/nursery/labels/print">Print List Again</a>
-        {% endif %}
+        <form method="post" action="/nursery/labels/print/">
+            {% csrf_token %}
+            <div id="current-order-list">
+            </div >
+            <hr>
+            <button id="print-button" class="btn btn-lg btn-primary" type="submit">Print List</button>
+        </form>
         </div>
     {% endif %}
 {% endblock %}
 {% block body_scripts %}
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script src="{% static 'js/typeahead.bundle.js' %}"></script>
     <script>
+        $(document).ready(function() {
+            $('#confirm-delete').on('show.bs.modal', function (e) {
+                console.log('Yes');
+                $(this).find('.btn-ok').attr('href', $(e.relatedTarget).data('href'));
+            });
+            var suggestion_key_to_obj = {};
+            var count_id = 0;
+            var datetime_to_previous_orders = {};
+            {% for obj, value in previous_orders.items %}
+                var key = "{{ obj.datetime|date:"YMdhGi" }}";
+                datetime_to_previous_orders[key] = [];
+                {% for label in value %}
+                  datetime_to_previous_orders[key].push({{label|safe}});
+                {% endfor %}
+            {% endfor %}
 
-    $.typeahead({
-    input: '#cultivar-search',
-    minLength: 3,
-    order: "asc",
-    offset: true,
-    hint: true,
-    source: {
-        car: {
-            //data: ["My first added brand", "M1 added brand at start"],
-            ajax: {
-                type: "GET",
-                url: "http://openfruit.io/api/v1/cultivars/",
-                data: {
-                    username: "dfnurseryapi",
-                    password: "dfnurseryapi"
+            $('.add-previous-order').click(function(){
+                suggestion_key_to_obj = {};
+                clear_current_order_list();
+                count_id = 0;
+                var id = $(this).attr('id');
+                var objs = datetime_to_previous_orders[id];
+                for (index = 0; index < objs.length; ++index) {
+                  add_cultivar_to_list(objs[index]);
                 }
-            }
-        }
-    },
-    callback: {
-        onClick: function (node, a, item, event) {
+            });
 
-            console.log(node);
-            console.log(a);
-            console.log(item);
-            console.log(event);
+            var clear_current_order_list = function(){
+                $('#current-order-list').empty();
+            };
 
-            console.log('onClick function triggered');
 
-        },
-        onSubmit: function (node, form, item, event) {
 
-            console.log(node);
-            console.log(form);
-            console.log(item);
-            console.log(event);
+            var process_cultivars = function(asyncResults, data, status){
+                $('body').css('cursor', "default");
+                var cultivars = data['results'];
+                suggestion_key_to_obj = {};
+                cultivars = Object.keys(cultivars).map(function(k) {
+                    var cultivar = cultivars[k];
+                    var key = cultivar['name'] + ' (' + cultivar['species'] + ')';
+                    suggestion_key_to_obj[key] = cultivar;
+                    return key
+                });
+                asyncResults(cultivars);
+            };
+            var search_for_cultivar = function(asyncResult, data, status){
+                var token = 'JWT ' + data['token'];
+                var cultivar = $('#cultivar-search').val();
+                $.ajax({
+                  url: 'https://www.openfruit.io/api/v1/cultivars/?name_contains=' + cultivar,
+                  data: {},
+                  type: 'GET',
+                  headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'Authorization': token,
+                  },
+                  success: function(data, status) { process_cultivars(asyncResult, data, status) },
+                  error: function(something){
+                    console.log(status);
+                  }
+                });
+            };
 
-            console.log('onSubmit override function triggered');
+            var add_cultivar_to_list = function(cultivar){
+              var list = $('#current-order-list');
+              var id = 'cultivar_id_' + count_id;
+              var hidden_input = "<input id='" + id + "' hidden type='text' name='cultivar_" + count_id + "' value='" + JSON.stringify(cultivar) +  "'>";
+              var clear_button = '<span id="clearer_' + id + '" class="clearer glyphicon glyphicon-remove-circle form-control-feedback"></span>'; list.append('<div class="has-feedback">' + hidden_input + '<input name="" readonly class="form-control hasclear" type="text" value="' + cultivar['display_key'] + ' x' + cultivar['count'] + '"> ' + clear_button + '</div>');
+              var clearerID = '#clearer_' + id;
+              console.log('ClearerID: ' + clearerID);
+              $(clearerID).click(function () {
+                console.log('Clearing: ' + $(this));
+                $(this).parent().remove();
+                $(this).remove();
+              });
+              count_id += 1;
+            };
 
-        }
-    }
-});
+            $('#cultivar-search').typeahead({minLength: 3,}, {
+                minLength: 3,
+                order: "asc",
+                offset: true,
+                hint: true,
+                source:
+                    function(query, syncResults, asyncResults) {
+                        // Get Token Then Conduct Query
+                        $('body').css('cursor', "progress");
+                        $.ajax({
+                            url: 'https://www.openfruit.io/api/v1/auth/token/',
+                            data: {username:'dfnurseryapi', password:'dfnurseryapi'},
+                            type: 'POST',
+                            success: function(data, status){ search_for_cultivar(asyncResults, data, status) }
+                        });
+                    }
+            }).bind('typeahead:selected', function(event, suggestion){
+              //console.log(suggestion);
+            }).bind('keypress', function(){
+              //console.log('Pressed: ' + $(this).val());
+            });
+            $('#search-add-button').click(function(){
+              var cultivar_search = $('#cultivar-search');
+              var qty = $('#cultivar-search-qty');
+              var key = cultivar_search.val();
+              var cultivar = suggestion_key_to_obj[key];
+              cultivar['count'] = qty.val();
+              cultivar['display_key'] = key;
+              add_cultivar_to_list(cultivar);
+              cultivar_search.val('');
+              qty.val(1);
+            });
+            $(".hasclear").keyup(function () {
+                var t = $(this);
+                t.next('span').toggle(Boolean(t.val()));
+            });
+
+         });
     </script>
 {% endblock %}
