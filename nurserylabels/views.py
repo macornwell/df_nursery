@@ -27,6 +27,8 @@ def create_nursery_labels(request):
     for obj in previous_orders:
         previous_orders_data[obj] = [mark_safe(item) for item in obj.data.split('&&&')]
     data = {
+        'OF_API_USERNAME': settings.OF_API_USERNAME,
+        'OF_API_PASSWORD': settings.OF_API_PASSWORD,
         'settings': settings,
         'previous_orders': previous_orders_data,
     }
@@ -41,6 +43,7 @@ def print_labels(request):
         value = request.POST[key]
         if not key.startswith('cultivar'):
             continue
+        value = value.replace('&&&', '\'')
         obj_for_saving.append(value)
         cultivar = json.loads(value)
         label = CultivarLabel()

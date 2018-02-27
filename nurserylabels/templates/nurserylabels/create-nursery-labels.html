@@ -76,6 +76,7 @@
 {% block body_scripts %}
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
     <script src="{% static 'js/typeahead.bundle.js' %}"></script>
+    <script src="//code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
     <script>
         $(document).ready(function() {
             $('#confirm-delete').on('show.bs.modal', function (e) {
@@ -108,9 +109,8 @@
                 $('#current-order-list').empty();
             };
 
-
-
-            var process_cultivars = function(asyncResults, data, status){
+            var process_cultivars = function(data, callback){
+              console.log(data);
                 $('body').css('cursor', "default");
                 var cultivars = data['results'];
                 suggestion_key_to_obj = {};
@@ -120,42 +120,60 @@
                     suggestion_key_to_obj[key] = cultivar;
                     return key
                 });
-                asyncResults(cultivars);
+                console.log(data);
+                callback(cultivars);
             };
-            var search_for_cultivar = function(asyncResult, data, status){
-                var token = 'JWT ' + data['token'];
-                var cultivar = $('#cultivar-search').val();
+            var search_for_cultivar = function(cultivar, callback){
+                $('body').css('cursor', "progress");
                 $.ajax({
-                  url: 'https://www.openfruit.io/api/v1/cultivars/?name_contains=' + cultivar,
-                  data: {},
-                  type: 'GET',
-                  headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'Authorization': token,
-                  },
-                  success: function(data, status) { process_cultivars(asyncResult, data, status) },
-                  error: function(something){
-                    console.log(status);
-                  }
+                    url: 'https://www.openfruit.io/api/v1/auth/token/',
+                    data: {username:'{{ OF_API_USERNAME }}', password:'{{ OF_API_PASSWORD }}'},
+                    type: 'POST',
+                    success: function(data, status) {
+                        var token = 'JWT ' + data['token'];
+                        $.ajax({
+                          url: 'https://www.openfruit.io/api/v1/cultivars/?name_contains=' + cultivar,
+                          data: {},
+                          type: 'GET',
+                          headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'Authorization': token,
+                          },
+                          success: function(data, status) { process_cultivars(data, callback) },
+                          error: function(something){
+                            console.log(status);
+                          }
+                        });
+                    }
                 });
             };
 
             var add_cultivar_to_list = function(cultivar){
               var list = $('#current-order-list');
               var id = 'cultivar_id_' + count_id;
-              var hidden_input = "<input id='" + id + "' hidden type='text' name='cultivar_" + count_id + "' value='" + JSON.stringify(cultivar) +  "'>";
+              var value = JSON.stringify(cultivar).replace(/'/g, "&&&");
+              var hidden_input = "<input id='" + id + "' hidden type='text' name='cultivar_" + count_id + "' value='" + value +  "'>";
               var clear_button = '<span id="clearer_' + id + '" class="clearer glyphicon glyphicon-remove-circle form-control-feedback"></span>'; list.append('<div class="has-feedback">' + hidden_input + '<input name="" readonly class="form-control hasclear" type="text" value="' + cultivar['display_key'] + ' x' + cultivar['count'] + '"> ' + clear_button + '</div>');
               var clearerID = '#clearer_' + id;
-              console.log('ClearerID: ' + clearerID);
               $(clearerID).click(function () {
-                console.log('Clearing: ' + $(this));
                 $(this).parent().remove();
                 $(this).remove();
               });
               count_id += 1;
             };
-
+            $( "#cultivar-search" ).autocomplete({
+                minLength: 3,
+                select: function( event, ui ) {
+                    //var suggestion = ui['item']['value'];
+                    //set_cultivar(suggestion);
+                },
+                source: function(value, response_callback ) {
+                    // Get Token Then Conduct Query
+                    search_for_cultivar(value['term'], response_callback);
+                }
+            });
+            /*
             $('#cultivar-search').typeahead({minLength: 3,}, {
                 minLength: 3,
                 order: "asc",
@@ -167,7 +185,7 @@
                         $('body').css('cursor', "progress");
                         $.ajax({
                             url: 'https://www.openfruit.io/api/v1/auth/token/',
-                            data: {username:'dfnurseryapi', password:'dfnurseryapi'},
+                            data: {username:'{{ OF_API_USERNAME }}', password:'{{ OF_API_PASSWORD }}'},
                             type: 'POST',
                             success: function(data, status){ search_for_cultivar(asyncResults, data, status) }
                         });
@@ -177,6 +195,7 @@
             }).bind('keypress', function(){
               //console.log('Pressed: ' + $(this).val());
             });
+            */
             $('#search-add-button').click(function(){
               var cultivar_search = $('#cultivar-search');
               var qty = $('#cultivar-search-qty');
